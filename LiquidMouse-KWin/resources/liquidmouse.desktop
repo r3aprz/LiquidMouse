@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=LiquidMouse
+GenericName=Cursore Liquido
+GenericName[it]=Cursore Liquido
+Comment=Cursore fluido con fisica liquida, scia e schizzi
+Comment[it]=Cursore fluido con fisica liquida, scia e schizzi
+Exec=/usr/local/bin/liquidmouse --settings
+Icon=liquidmouse
+Terminal=false
+Type=Application
+Categories=Utility;Settings;DesktopSettings;Qt;KDE;
+Keywords=mouse;cursor;liquid;fluid;kwin;plasma;cursore;
+StartupNotify=false
+X-KDE-autostart-phase=2

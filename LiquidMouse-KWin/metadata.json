@@ -1,0 +1,11 @@
+{
+    "KPlugin": {
+        "Category": "Appearance",
+        "Description": "A liquid cursor that stretches into a tail, takes context shapes, and splashes on clicks",
+        "Description[it]": "Un cursore liquido che si allunga in una coda, assume forme contestuali e crea schizzi al clic",
+        "EnabledByDefault": false,
+        "License": "GPL",
+        "Name": "LiquidMouse",
+        "Name[it]": "LiquidMouse"
+    }
+}
