@@ -1,9 +1,12 @@
 #pragma once
 
 #include <kwin/effect/effect.h>
+#ifdef LIQUIDMOUSE_KWIN_HAS_CORE_RECT
 #include <kwin/core/rect.h>
+#endif
 #include <QObject>
 #include <QPointF>
+#include <QRect>
 #include <QElapsedTimer>
 #include <QTimer>
 #include "liquidbody.h"
@@ -22,8 +25,16 @@ public:
 
     void reconfigure(ReconfigureFlags flags) override;
     void prePaintScreen(ScreenPrePaintData &data) override;
+#if defined(LIQUIDMOUSE_KWIN_PAINTSCREEN_BOOL_REGION_LOGICALOUTPUT)
     [[nodiscard]] bool paintScreen(const RenderTarget &renderTarget, const RenderViewport &viewport,
                                   int mask, const Region &deviceRegion, LogicalOutput *screen) override;
+#elif defined(LIQUIDMOUSE_KWIN_PAINTSCREEN_VOID_QREGION_LOGICALOUTPUT)
+    void paintScreen(const RenderTarget &renderTarget, const RenderViewport &viewport,
+                     int mask, const QRegion &region, LogicalOutput *screen) override;
+#else
+    void paintScreen(const RenderTarget &renderTarget, const RenderViewport &viewport,
+                     int mask, const QRegion &region, Output *screen) override;
+#endif
     void postPaintScreen() override;
 
     bool isActive() const override;
@@ -47,7 +58,11 @@ private:
     bool m_systemIsDark = true;
 
     QPointF m_lastPos;
+#ifdef LIQUIDMOUSE_KWIN_HAS_CORE_RECT
     Rect m_lastDamage;
+#else
+    QRect m_lastDamage;
+#endif
     QElapsedTimer m_frameTimer;
     QTimer m_animTimer;
 };

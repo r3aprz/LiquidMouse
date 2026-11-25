@@ -15,16 +15,31 @@ fi
 DOT_RADIUS=$(awk "BEGIN {printf \"%.2f\", 6.5 * $SCALE}")
 TRAIL_LENGTH=$(awk "BEGIN {printf \"%.1f\", 160.0 * $SCALE}")
 
-kwriteconfig6 --file kwinrc --group Effect-LiquidMouse --key Scale "$SCALE"
-kwriteconfig6 --file kwinrc --group Effect-LiquidMouse --key DotRadius "$DOT_RADIUS"
-kwriteconfig6 --file kwinrc --group Effect-LiquidMouse --key TrailLength "$TRAIL_LENGTH"
+KWRITECONFIG_BIN=""
+for cmd in kwriteconfig6 kwriteconfig5; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+        KWRITECONFIG_BIN="$cmd"
+        break
+    fi
+done
 
-if command -v qdbus-qt6 >/dev/null 2>&1; then
-    qdbus-qt6 org.kde.KWin /Effects org.kde.kwin.Effects.reconfigureEffect "liquidmouse" 2>/dev/null || true
-    qdbus-qt6 org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
-elif command -v qdbus6 >/dev/null 2>&1; then
-    qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.reconfigureEffect "liquidmouse" 2>/dev/null || true
-    qdbus6 org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
+if [ -n "$KWRITECONFIG_BIN" ]; then
+    "$KWRITECONFIG_BIN" --file kwinrc --group Effect-LiquidMouse --key Scale "$SCALE"
+    "$KWRITECONFIG_BIN" --file kwinrc --group Effect-LiquidMouse --key DotRadius "$DOT_RADIUS"
+    "$KWRITECONFIG_BIN" --file kwinrc --group Effect-LiquidMouse --key TrailLength "$TRAIL_LENGTH"
+fi
+
+QDBUS_BIN=""
+for cmd in qdbus-qt6 qdbus6 qdbus; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+        QDBUS_BIN="$cmd"
+        break
+    fi
+done
+
+if [ -n "$QDBUS_BIN" ]; then
+    "$QDBUS_BIN" org.kde.KWin /Effects org.kde.kwin.Effects.reconfigureEffect "kwin_liquidmouse" 2>/dev/null || true
+    "$QDBUS_BIN" org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
 elif command -v dbus-send >/dev/null 2>&1; then
     dbus-send --session --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
 fi

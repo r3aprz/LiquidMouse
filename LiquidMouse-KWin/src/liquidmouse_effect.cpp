@@ -209,12 +209,19 @@ void LiquidMouseEffect::onTick() {
     // Calculate dirty region to repaint
     double shakeFactor = std::max(1.0, m_body.shakeScale.value);
     double reach = (m_body.tuning.reach() + 32.0) * shakeFactor;
+#ifdef LIQUIDMOUSE_KWIN_HAS_CORE_RECT
     Rect newDamage(static_cast<int>(m_lastPos.x() - reach),
                    static_cast<int>(m_lastPos.y() - reach),
                    static_cast<int>(2 * reach),
                    static_cast<int>(2 * reach));
-
     Rect totalDamage = m_lastDamage.united(newDamage);
+#else
+    QRect newDamage(static_cast<int>(m_lastPos.x() - reach),
+                    static_cast<int>(m_lastPos.y() - reach),
+                    static_cast<int>(2 * reach),
+                    static_cast<int>(2 * reach));
+    QRect totalDamage = m_lastDamage.united(newDamage);
+#endif
     m_lastDamage = newDamage;
 
     if (!totalDamage.isEmpty()) {
@@ -226,6 +233,7 @@ void LiquidMouseEffect::prePaintScreen(ScreenPrePaintData &data) {
     effects->prePaintScreen(data);
 }
 
+#if defined(LIQUIDMOUSE_KWIN_PAINTSCREEN_BOOL_REGION_LOGICALOUTPUT)
 bool LiquidMouseEffect::paintScreen(const RenderTarget &renderTarget, const RenderViewport &viewport,
                                     int mask, const Region &deviceRegion, LogicalOutput *screen) {
     // 1. Paint underlying desktop windows
@@ -233,11 +241,29 @@ bool LiquidMouseEffect::paintScreen(const RenderTarget &renderTarget, const Rend
     if (!ok || !m_enabled) {
         return ok;
     }
+#else
+#if defined(LIQUIDMOUSE_KWIN_PAINTSCREEN_VOID_QREGION_LOGICALOUTPUT)
+void LiquidMouseEffect::paintScreen(const RenderTarget &renderTarget, const RenderViewport &viewport,
+                                    int mask, const QRegion &region, LogicalOutput *screen) {
+#else
+void LiquidMouseEffect::paintScreen(const RenderTarget &renderTarget, const RenderViewport &viewport,
+                                    int mask, const QRegion &region, Output *screen) {
+#endif
+    // 1. Paint underlying desktop windows
+    effects->paintScreen(renderTarget, viewport, mask, region, screen);
+    if (!m_enabled) {
+        return;
+    }
+#endif
 
     // 2. Render the liquid cursor
     LiquidBody::Shape shape = m_body.shape();
     if (shape.isEmpty()) {
+#if defined(LIQUIDMOUSE_KWIN_PAINTSCREEN_BOOL_REGION_LOGICALOUTPUT)
         return true;
+#else
+        return;
+#endif
     }
 
     LiquidRenderer::Colors colors = LiquidRenderer::resolveColors(m_body.tuning.appearance, m_systemIsDark);
@@ -264,7 +290,9 @@ bool LiquidMouseEffect::paintScreen(const RenderTarget &renderTarget, const Rend
             }
         }
     }
+#if defined(LIQUIDMOUSE_KWIN_PAINTSCREEN_BOOL_REGION_LOGICALOUTPUT)
     return true;
+#endif
 }
 
 void LiquidMouseEffect::postPaintScreen() {

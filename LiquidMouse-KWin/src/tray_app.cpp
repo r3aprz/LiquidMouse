@@ -36,8 +36,9 @@
 // ---------------------------------------------------------------------------
 class KWinController {
 public:
-    static QString activeEffectName() {
-        QStringList candidates = {
+    static const QStringList& effectCandidates() {
+        static const QStringList candidates = {
+            QStringLiteral("kwin_liquidmouse"),
             QStringLiteral("kwin_liquidmouse_v9"),
             QStringLiteral("kwin_liquidmouse_v8"),
             QStringLiteral("kwin_liquidmouse_v7"),
@@ -46,12 +47,15 @@ public:
             QStringLiteral("kwin_liquidmouse_v4"),
             QStringLiteral("kwin_liquidmouse_v3"),
             QStringLiteral("kwin_liquidmouse_v2"),
-            QStringLiteral("kwin_liquidmouse"),
             QStringLiteral("kwin6_effect_liquidmouse"),
             QStringLiteral("kwin4_effect_liquidmouse"),
             QStringLiteral("liquidmouse")
         };
-        for (const auto &cand : candidates) {
+        return candidates;
+    }
+
+    static QString activeEffectName() {
+        for (const auto &cand : effectCandidates()) {
             QDBusMessage msg = QDBusMessage::createMethodCall(
                 QStringLiteral("org.kde.KWin"),
                 QStringLiteral("/Effects"),
@@ -64,25 +68,11 @@ public:
                 return cand;
             }
         }
-        return QStringLiteral("kwin_liquidmouse_v2");
+        return QStringLiteral("kwin_liquidmouse");
     }
 
     static bool isEffectLoaded() {
-        QStringList candidates = {
-            QStringLiteral("kwin_liquidmouse_v9"),
-            QStringLiteral("kwin_liquidmouse_v8"),
-            QStringLiteral("kwin_liquidmouse_v7"),
-            QStringLiteral("kwin_liquidmouse_v6"),
-            QStringLiteral("kwin_liquidmouse_v5"),
-            QStringLiteral("kwin_liquidmouse_v4"),
-            QStringLiteral("kwin_liquidmouse_v3"),
-            QStringLiteral("kwin_liquidmouse_v2"),
-            QStringLiteral("kwin_liquidmouse"),
-            QStringLiteral("kwin6_effect_liquidmouse"),
-            QStringLiteral("kwin4_effect_liquidmouse"),
-            QStringLiteral("liquidmouse")
-        };
-        for (const auto &cand : candidates) {
+        for (const auto &cand : effectCandidates()) {
             QDBusMessage msg = QDBusMessage::createMethodCall(
                 QStringLiteral("org.kde.KWin"),
                 QStringLiteral("/Effects"),
@@ -98,35 +88,26 @@ public:
 
         auto config = KSharedConfig::openConfig(QStringLiteral("kwinrc"));
         config->reparseConfiguration();
-        return config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v9Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v8Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v7Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v6Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v5Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v4Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v3Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouse_v2Enabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin_liquidmouseEnabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin6_effect_liquidmouseEnabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("kwin4_effect_liquidmouseEnabled", false)
-               || config->group(QStringLiteral("Plugins")).readEntry("liquidmouseEnabled", false);
+        const auto plugins = config->group(QStringLiteral("Plugins"));
+        for (const auto &cand : effectCandidates()) {
+            if (plugins.readEntry(cand + QStringLiteral("Enabled"), false)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static void setEffectEnabled(bool enabled) {
+        const QString activeName = activeEffectName();
         auto config = KSharedConfig::openConfig(QStringLiteral("kwinrc"));
         auto plugins = config->group(QStringLiteral("Plugins"));
-        plugins.writeEntry("kwin_liquidmouse_v9Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouse_v8Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouse_v7Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouse_v6Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouse_v5Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouse_v4Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouse_v3Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouse_v2Enabled", enabled);
-        plugins.writeEntry("kwin_liquidmouseEnabled", enabled);
-        plugins.writeEntry("kwin6_effect_liquidmouseEnabled", enabled);
-        plugins.writeEntry("kwin4_effect_liquidmouseEnabled", enabled);
-        plugins.writeEntry("liquidmouseEnabled", enabled);
+        for (const auto &cand : effectCandidates()) {
+            if (cand == activeName) {
+                plugins.writeEntry(cand + QStringLiteral("Enabled"), enabled);
+            } else {
+                plugins.deleteEntry(cand + QStringLiteral("Enabled"));
+            }
+        }
         plugins.sync();
 
         QDBusMessage msg = QDBusMessage::createMethodCall(
@@ -135,7 +116,7 @@ public:
             QStringLiteral("org.kde.kwin.Effects"),
             enabled ? QStringLiteral("loadEffect") : QStringLiteral("unloadEffect")
         );
-        msg << activeEffectName();
+        msg << activeName;
         QDBusConnection::sessionBus().send(msg);
 
         // Notifica KWin di ricaricare le impostazioni
@@ -193,16 +174,7 @@ public:
     }
 
     static void notifyKWin() {
-        QStringList effects = {
-            QStringLiteral("kwin_liquidmouse_v4"),
-            QStringLiteral("kwin_liquidmouse_v3"),
-            QStringLiteral("kwin_liquidmouse_v2"),
-            QStringLiteral("kwin_liquidmouse"),
-            QStringLiteral("kwin6_effect_liquidmouse"),
-            QStringLiteral("kwin4_effect_liquidmouse"),
-            QStringLiteral("liquidmouse")
-        };
-        for (const auto &eff : effects) {
+        for (const auto &eff : effectCandidates()) {
             QDBusMessage msg = QDBusMessage::createMethodCall(
                 QStringLiteral("org.kde.KWin"),
                 QStringLiteral("/Effects"),
